@@ -2,7 +2,18 @@
 
 ## what this is about
 
+The idea is a handheld device that holds a card (piece of paper) which holds any message (like a task) that gets illuminated and thus gets the attention of the user once in a while. It is intended for people with small attention span, eg. children, adults in a hurry, or anyone who wants to no what was the task they was given (by their selfs maybe). 
+
+The card maybe designed by hand and can hold any message (like tasks like "brush the teeths", "homework", "make your plannings", ...) and it gets illuminated in a friendly way.
+
+The device gets switched on by inserting the card, and switched off by pulling the card out likewise.
+
 ## ideas
+
+## Mounts
+
+1. Hanger using some string
+2. Stand
 
 ### use different programs
 
