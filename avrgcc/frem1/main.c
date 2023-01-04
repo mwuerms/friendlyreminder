@@ -53,9 +53,12 @@ volatile uint8_t global_events;
 #define fEV_BUTTON_WAKE    _BV(1)
 
 //static state_handler_t state_func;
-//static uint8_t state;
-//#define cST_BOOT        (0)
+static uint8_t state;
+#define ST_BOOT         (0)
+#define ST_ANIMATE      (1)
 
+static uint8_t boot_timeout;
+#define SET_BOOT_TIMEOUT    (2*8)
 /* - private functions  ----------------------------------------------------- */
 /**
  * enter the given sleep mode, see avr/sleep.h
@@ -88,9 +91,9 @@ static void init(void) {
 
     PRR = 0xFF;
     global_events = 0;
-    //state = cST_BOOT;
-    ledAnimation_Init();
-
+    state = ST_BOOT;
+    boot_timeout = SET_BOOT_TIMEOUT;
+    
     sei();
 }
 
@@ -110,11 +113,22 @@ int main (void)
     wdtTimer_StartTimeout(1, cEV_TIMER_INTERVAL_0_125S, fEV_TICK_TIMER);
 
     while(1) {
-        if(local_events & fEV_TICK_TIMER) {
-            ledAnimation_Update();
-            wdtTimer_StartTimeout(1, cEV_TIMER_INTERVAL_0_125S, fEV_TICK_TIMER);
+        if(state == ST_BOOT) {
+            if(local_events & fEV_TICK_TIMER) {
+                if(boot_timeout == 0) {
+                    state = ST_ANIMATE;
+                    ledAnimation_Init();
+                }
+                wdtTimer_StartTimeout(1, cEV_TIMER_INTERVAL_0_125S, fEV_TICK_TIMER);
+            }
         }
-
+        if(state = ST_ANIMATE) {
+            if(local_events & fEV_TICK_TIMER) {
+                ledAnimation_Update();
+                wdtTimer_StartTimeout(1, cEV_TIMER_INTERVAL_0_125S, fEV_TICK_TIMER);
+            }
+        }
+        
         while(1) {
             cli();
             local_events = global_events;

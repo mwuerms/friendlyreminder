@@ -254,8 +254,8 @@ LDFLAGS += $(PRINTF_LIB) $(SCANF_LIB) $(MATH_LIB)
 # Type: avrdude -c ?
 # to get a full listing.
 #
-#AVRDUDE_PROGRAMMER = jtag2isp -B 10
-AVRDUDE_PROGRAMMER = usbtiny -B 10
+AVRDUDE_PROGRAMMER = jtag2isp -B 10
+#AVRDUDE_PROGRAMMER = usbtiny -B 10
 
 # com1 = serial port. Use lpt1 to connect to parallel port.
 AVRDUDE_PORT = usb

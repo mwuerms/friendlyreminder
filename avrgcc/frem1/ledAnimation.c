@@ -29,7 +29,7 @@
 #include "fade.h"
 
 /* - defines ---------------------------------------------------------------- */
-#define cNB_LEDs            (8)
+#define cNB_LEDs            (5)
 #define cBRIGHTNESS_0       (0)
 #define cBRIGHTNESS_1       (45)
 #define cBRIGHTNESS_2       (90)
@@ -50,28 +50,30 @@
 
 /* - variables -------------------------------------------------------------- */
 static const rgb_color_t colors[] = {
-    {.red = 50, .green = 0, .blue = 0},
-    {.red = 50, .green = 0, .blue = 50},
-    {.red = 0, .green = 0, .blue = 50},
-    {.red = 0, .green = 50, .blue = 50},
-    {.red = 0, .green = 50, .blue = 0},
-    {.red = 50, .green = 50, .blue = 0},
-    {.red = 50, .green = 25, .blue = 0},
-    {.red = 50, .green = 25, .blue = 25},
-    {.red = 0, .green = 25, .blue = 50},
-    {.red = 0, .green = 50, .blue = 25},
-    {.red = 0, .green = 25, .blue = 25},
-    {.red = 25, .green = 50, .blue = 0},
-    {.red = 25, .green = 25, .blue = 50},
+    {.red = 50, .green = 0, .blue = 0},   // 0
+    {.red = 50, .green = 0, .blue = 50},  // 1
+    {.red = 0, .green = 0, .blue = 50},   // 2
+    {.red = 0, .green = 50, .blue = 50},  // 3
+    {.red = 0, .green = 50, .blue = 0},   // 4
+    {.red = 50, .green = 50, .blue = 0},  // 5
+    {.red = 50, .green = 25, .blue = 0},  // 6
+    {.red = 50, .green = 25, .blue = 25}, // 7
+    {.red = 0, .green = 25, .blue = 50},  // 8
+    {.red = 0, .green = 50, .blue = 25},  // 9
+    {.red = 0, .green = 25, .blue = 25},  // 10
+    {.red = 25, .green = 50, .blue = 0},  // 11
+    {.red = 25, .green = 25, .blue = 50}, // 12
 };
-#define cNB_COLORS (sizeof(colors)/sizeof(rgb_color_t))
+#define cNB_COLORS (sizeof(colors)/sizeof(colors[0]))
 
 static rgb_color_t leds1[cNB_LEDs];
 static uint8_t leds1_pin;
-static rgb_color_t leds2[cNB_LEDs];
-static uint8_t leds2_pin;
 
 static uint8_t led_state;//, led_timeout;
+
+static fade_color_t fade_color;
+static rgb_color_t current_fade_color;
+#define NB_FADE_STEPS   (8)
 
 /* - private functions ------------------------------------------------------ */
 
@@ -96,6 +98,18 @@ static void inline _SetAllYellowLEDs(rgb_color_t *l, uint8_t nb, uint8_t value) 
     }
 }
 
+/**
+ * set all leds to a given color
+ */
+static void inline _SetAllLEDsColor(rgb_color_t *l, uint8_t nb, rgb_color_t *col) {
+    uint8_t i;
+    for(i = 0; i < nb; i++) {
+        l[i].red = col->red;
+        l[i].green = col->green;
+        l[i].green = col->blue;
+    }
+}
+
 static inline uint8_t _inc(uint8_t value, uint8_t max) {
     if(value < max)
         return(value+1);
@@ -110,102 +124,32 @@ static inline uint8_t _inc(uint8_t value, uint8_t max) {
 void ledAnimation_Init(void) {
     led_state = 0;
     //memset(leds1, 0, sizeof(leds1));
-    //memset(leds2, 0, sizeof(leds2));
 
-    leds1_pin = _BV(0);
-    leds2_pin = _BV(1);
-    //ledDriver_Set(leds1, cNB_LEDs, leds1_pin);
-    //ledDriver_Set(leds2, cNB_LEDs, leds2_pin);
-    ledAnimation_Update();
-}
+    leds1_pin = _BV(2);
+    _SetAllLEDsColor(leds1, cNB_LEDs, &colors[0]);
+    ledDriver_Set(leds1, cNB_LEDs, leds1_pin);
 
-/**
- * switch to next animation
- */
-void ledAnimation_Next(void) {
-    uint8_t temp;
-    temp = leds1_pin;
-    leds1_pin = leds2_pin;
-    leds2_pin = temp;
+    fade_Start(&colors[0], &colors[1], &fade_color, NB_FADE_STEPS);
+    //ledAnimation_Update();
 }
 
 /**
  * process the leds
  */
 void ledAnimation_Update(void) {
-    static uint8_t led_i = 0;
+    static uint8_t fade_col_index_0 = 0;
+    static uint8_t fade_col_index_1 = 1;
+    uint8_t fade_res;
 
-    //static uint8_t led_dir = 0; // =0: down, =1: up
-    _SetAllRedLEDs(leds2, cNB_LEDs, cBRIGHTNESS_1);
-    _SetAllYellowLEDs(leds1, cNB_LEDs, cBRIGHTNESS_1);
-#warning _APPLICATION_ this is the trailer backlight
-    if(led_i >= cNB_LEDs-1) {
-        led_i = 0;
+    fade_res = fade_Next(&fade_color);
+    fade_GetCurrentColor(&fade_color, &current_fade_color);
+    _SetAllLEDsColor(leds1, cNB_LEDs, &current_fade_color);
+    ledDriver_Set(leds1, cNB_LEDs, leds1_pin);
+
+    if(fade_res == 0) {
+        // done, next color
+        fade_col_index_0 = fade_col_index_1;
+        fade_col_index_1 = _inc(fade_col_index_1, (cNB_COLORS - 1));
+        fade_Start(&colors[fade_col_index_0], &colors[fade_col_index_1], &fade_color, NB_FADE_STEPS);
     }
-    else {
-        led_i++;
-    }
-    /*if(led_i == 0) {
-        led_i = cNB_LEDs-1;
-    }
-    else {
-        led_i--;
-    }*/
-    leds1[led_i].red = cBRIGHTNESS_2;
-    leds1[led_i].green = cBRIGHTNESS_2;
-    leds2[led_i].red = cBRIGHTNESS_2;
-
-    //ledDriver_Set(leds1, cNB_LEDs, _BV(0));
-    ledDriver_Set(leds1, cNB_LEDs, _BV(1));
-    ledDriver_Set(leds1, cNB_LEDs, _BV(2));
-    ledDriver_Set(leds1, cNB_LEDs, _BV(3));
-    ledDriver_Set(leds1, cNB_LEDs, _BV(4));
-    ledDriver_Set(leds1, cNB_LEDs, _BV(6));
-    //ledDriver_Set(leds1, cNB_LEDs, leds1_pin);
-    //ledDriver_Set(leds2, cNB_LEDs, leds2_pin);
-/*
-     static rgb_color_t c0, c1;
-     static fade_color_t fc;
-     rgb_color_t cur;
-     static uint8_t fade_state = 0;
-     static uint8_t color_count;
-     uint8_t i;
-     if(fade_state == 0) {
-         fade_state = 1;
-         color_count = 0;
-         mSETCOLOR(c0.red, c0.green, c0.blue, colors[color_count].red, colors[color_count].green, colors[color_count].blue);
-         color_count = _inc(color_count, (cNB_COLORS-1));
-         mSETCOLOR(c1.red, c1.green, c1.blue, colors[color_count].red, colors[color_count].green, colors[color_count].blue);
-         color_count = _inc(color_count, (cNB_COLORS-1));
-
-         fade_Start(&c0, &c1, &fc, 10);
-
-         // wrong direction for(i = 0; i < cNB_LEDs; i++) {
-         for(i = cNB_LEDs-1; i > 0; i--) {
-             fade_GetCurrentColor(&fc, &cur);
-             mSETCOLOR(leds1[i].red, leds1[i].green, leds1[i].blue, cur.red, cur.green, cur.blue);
-             fade_Next(&fc);
-         }
-         fade_GetCurrentColor(&fc, &cur);
-         mSETCOLOR(leds1[i].red, leds1[i].green, leds1[i].blue, cur.red, cur.green, cur.blue);
-     }
-     else {
-         // copy values from [i-1] to [i], from cNB_LEDs-1 ... 1, afterwards set [0] to new value
-         for(i = cNB_LEDs-1; i > 0; i--) {
-             mSETCOLOR(leds1[i].red, leds1[i].green, leds1[i].blue, leds1[i-1].red, leds1[i-1].green, leds1[i-1].blue);
-
-         }
-         if(fade_Next(&fc) == 0) {
-             // set new colors
-             mSETCOLOR(c0.red, c0.green, c0.blue, c1.red, c1.green, c1.blue);
-             mSETCOLOR(c1.red, c1.green, c1.blue, colors[color_count].red, colors[color_count].green, colors[color_count].blue);
-             color_count = _inc(color_count, (cNB_COLORS-1));
-             fade_Start(&c0, &c1, &fc, 10);
-         }
-         fade_GetCurrentColor(&fc, &cur);
-         mSETCOLOR(leds1[0].red, leds1[0].green, leds1[0].blue, cur.red, cur.green, cur.blue);
-
-     }
-*/
-
 }
